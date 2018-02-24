@@ -207,6 +207,10 @@ int ListCount ( LIST *list)
 
 void *ListFirst (LIST *list)
 {
+  if (list == NULL)
+  {
+    return NULL;
+  }
     if (list->head == NULL)
 	{
         return NULL;

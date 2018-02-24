@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<stdint.h>
 #include"list.h"
 int  number_of_pid=0;
 
@@ -52,8 +53,8 @@ int comparator_pid(const PCB *a, int b)
 
 int comparator(const PCB *a, const PCB *b)
 {
-    if(a==NULL)
-    return 0;
+    if(a==NULL || b==NULL)
+      return 0;
     if (a==b)
       return 1;
     else
@@ -144,14 +145,20 @@ int execute()
   else if (Run == NULL && ListCount(Ready_0) != 0)
   {
     Run= (PCB*)ListLast(Ready_0);
+    Run->status=1;
+    dequeue_Ready(Run);
   }
   else if (Run == NULL && ListCount(Ready_1) != 0)
   {
     Run= (PCB*)ListLast(Ready_1);
+    Run->status=1;
+    dequeue_Ready(Run);
   }
   else if (Run == NULL && ListCount(Ready_2) != 0)
   {
     Run= (PCB*)ListLast(Ready_2);
+    Run->status=1;
+    dequeue_Ready(Run);
   }
   else if(compare()==0)
     i =0;
@@ -171,24 +178,29 @@ void go_to_first()
 int create(int Priority)
 {
     int i= 0;
-            p=NULL;
-            number_of_pid++;
-            p=(PCB*)malloc(sizeof(PCB));
-            p->sender_pid=-1;
-            p->pid=number_of_pid;
-            p->priority=Priority;
-            strcpy(p->content, "\0");
-            p->status=2;
-            ListAppend(PROcesses,p);
-            enqueue_Ready(p);
-            i= (ListCurr(PROcesses)==p);
-            if(i)
-              printf("PID=%d has been created!\n", p->pid);
+    p=NULL;
+    number_of_pid++;
+    p=(PCB*)malloc(sizeof(PCB));
+    p->sender_pid=-1;
+    p->pid=number_of_pid;
+    p->priority=Priority;
+    strcpy(p->content, "\0");
+    p->status=2;
+    ListAppend(PROcesses,p);
+    enqueue_Ready(p);
+    i= (ListCurr(PROcesses)==p);
+    if(i)
+      printf("PID=%d has been created!\n", p->pid);
     return i;
 }
 
 void Fork()
 {
+  if(Run == NULL)
+  {
+      printf("No process is running!\n");
+      return;
+  }
   number_of_pid++;
   p=Run;
   q=(PCB*)malloc(sizeof(PCB));
@@ -205,17 +217,17 @@ void Fork()
 
 int Exit()
 {
-     go_to_first();
-     struct PCB *Delete_one=Run;
-     Run=NULL;
-     int i = Delete_one->pid;
-     ListSearch(PROcesses, (void*)comparator , (void*)Delete_one);
-     ListRemove(PROcesses);
-     free(Delete_one);
-     Delete_one=NULL;
-     execute();
-     printf("The running process of PID %d has been killed!\n", i);
-     return i;
+    go_to_first();
+    struct PCB *Delete_one=Run;
+    Run=NULL;
+    int i = Delete_one->pid;
+    ListSearch(PROcesses, (void*)comparator , (void*)Delete_one);
+    ListRemove(PROcesses);
+    free(Delete_one);
+    Delete_one=NULL;
+    execute();
+    printf("The running process of PID %d has been killed!\n", i);
+    return i;
 }
 
 int kill(int PID)
@@ -223,7 +235,7 @@ int kill(int PID)
     go_to_first();
     int i=0;
     struct PCB *Delete_one;
-    Delete_one = ListSearch(PROcesses, (void*)comparator_pid , (void*)PID);
+    Delete_one = ListSearch(PROcesses, (void*)comparator_pid , (void*)(intptr_t)PID);
     if (Delete_one==NULL)
     {
       printf("The process is not exist!\n");
@@ -233,7 +245,7 @@ int kill(int PID)
     if (Delete_one->status==1)
       Run=NULL;
     if (Delete_one->status==2)
-      dequeue_Ready(p);
+      dequeue_Ready(Delete_one);
     if (Delete_one->status==3)
     {
       ListSearch(waiting_for_receive, (void*)comparator , (void*)Delete_one);
@@ -262,7 +274,7 @@ void send(int PID,  char *msg)
     if (PID ==0)
       p = init;
     else{
-      p = ListSearch(PROcesses, (void*)comparator_pid , (void*)PID);
+      p = ListSearch(PROcesses, (void*)comparator_pid , (void*)(intptr_t)PID);
     if (p==NULL)
     {
       printf("The process is not exist!\n");
@@ -379,7 +391,7 @@ int receive()
 int reply(int PID,  char *msg)
 {
   go_to_first();
-  p = ListSearch(PROcesses, (void*)comparator_pid , (void*)PID);
+  p = ListSearch(PROcesses, (void*)comparator_pid , (void*)(intptr_t)PID);
   if (p==NULL)
   {
     printf("The process is not exist!\n");
@@ -390,7 +402,7 @@ int reply(int PID,  char *msg)
     printf("The process has not received any message!\n");
     return 0;
   }
-  q = ListSearch(waiting_for_reply, (void*)comparator_pid , (void*)p->sender_pid);
+  q = ListSearch(waiting_for_reply, (void*)comparator_pid , (void*)(intptr_t)p->sender_pid);
   if (q==NULL)
   {
     printf("The sender has been killed!\n");
@@ -455,6 +467,10 @@ int Sempahore_P(int semaphore)
   PCB* sp = Run;
   if (semaphore==0)
   {
+    if (Sem0 == NULL){
+      printf("Sem0 does not exist!\n");
+      return 0;
+    }
     if (Sem0->value<=0)
     {
       sp->status=3;
@@ -466,6 +482,10 @@ int Sempahore_P(int semaphore)
   }
   else if (semaphore==1)
   {
+    if (Sem1 == NULL){
+      printf("Sem1 does not exist!\n");
+      return 0;
+    }
     if (Sem1->value<=0)
     {
       sp->status=3;
@@ -477,6 +497,10 @@ int Sempahore_P(int semaphore)
   }
   else if (semaphore==2)
   {
+    if (Sem2 == NULL){
+      printf("Sem2 does not exist!\n");
+      return 0;
+    }
     if (Sem2->value<=0)
     {
       sp->status=3;
@@ -488,6 +512,10 @@ int Sempahore_P(int semaphore)
   }
   else if (semaphore==3)
   {
+    if (Sem3 == NULL){
+      printf("Sem3 does not exist!\n");
+      return 0;
+    }
     if (Sem3->value<=0)
     {
       sp=Run;
@@ -500,6 +528,10 @@ int Sempahore_P(int semaphore)
   }
   else if (semaphore==4)
   {
+    if (Sem4 == NULL){
+      printf("Sem4 does not exist!\n");
+      return 0;
+    }
     if (Sem4->value<=0)
     {
       sp->status=3;
@@ -614,7 +646,7 @@ int Sempahore_V(int semaphore)
 void Procinfo(int PID)
 {
     go_to_first();
-    p = ListSearch(PROcesses, (void*)comparator_pid , (void*)PID);
+    p = ListSearch(PROcesses, (void*)comparator_pid , (void*)(intptr_t)PID);
     if (p==NULL)
     {
       printf("The process is not exist!\n");
@@ -735,17 +767,18 @@ int main()
         scanf("%s",&ch);
         if (ch == 'C'){
               int check = 1;
-              int pri;
+              char pri;
               while (check)
               {
                 printf("Please type the priority:\n");
-                scanf("%d",&pri);
-                if (pri != 0 && pri != 1 && pri != 2)
+                scanf("%s",&pri);
+                if (pri != '0' && pri != '1' && pri != '2')
                   printf("Illegal input! Please try again!\n");
                 else
                   check =0;
               }
-              k=create(pri);
+              int proID = (int) (pri - '0');
+              int k=create(proID);
               if(k==1)
               {
                   printf("created successfully!\n");

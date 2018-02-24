@@ -1,3 +1,6 @@
+2/23/2018 UPDATE: Finished almost all bugs.
+
+
 All code are in OS.C. 
 This OS can be used by typing in the capital letters to terminal. 
 
